@@ -1,29 +1,12 @@
-use std::rc::Rc;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     val: i64,
-    next: Option<Rc<Node>>,
+    next: Option<Box<Node>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WindowStack {
-    head: Option<Rc<Node>>,
-}
-
-impl Clone for Node {
-    fn clone(&self) -> Self {
-        Self {
-            val: self.val,
-            next: match &self.next {
-                Some(v) => {
-                    let next = v.as_ref().clone();
-                    Some(Rc::from(next))
-                }
-                None => None,
-            },
-        }
-    }
+    head: Option<Box<Node>>,
 }
 
 impl Node {
@@ -31,69 +14,50 @@ impl Node {
         Self { val, next: None }
     }
 
-    pub fn remove(self, val: i64) -> Option<Rc<Self>> {
+    pub fn remove(mut self, val: i64) -> Option<Box<Self>> {
         if self.val == val {
             self.next
         } else {
-            Some(Rc::from(match self.next {
-                Some(v) => Self {
-                    val: self.val,
-                    next: v.as_ref().clone().remove(val),
-                },
-                None => self,
-            }))
+            Some(Box::new(
+                self.next
+                    .take()
+                    .map(|next| Self {
+                        val: self.val,
+                        next: next.remove(val),
+                    })
+                    .unwrap_or(self),
+            ))
         }
     }
 
-    pub fn move_up(self, val: i64) -> Rc<Self> {
-        if let Some(s) = self.remove(val) {
-            Rc::from(Self { val, next: Some(s) })
-        } else {
-            Rc::from(Self { val, next: None })
-        }
+    pub fn move_up(self, val: i64) -> Box<Self> {
+        Box::new(Self {
+            val,
+            next: self.remove(val),
+        })
     }
 
-    pub fn add(self, val: i64) -> Rc<Self> {
-        if let Some(v) = self.next {
-            let next = v.as_ref().clone().add(val);
-            Rc::from(Self {
-                val: self.val,
-                next: Some(next),
-            })
-        } else {
-            let node = Node::new(val);
-            let next = Some(Rc::from(node));
-            Rc::from(Self {
-                val: self.val,
-                next,
-            })
-        }
+    pub fn add(self, val: i64) -> Box<Self> {
+        Box::new(Self {
+            val: self.val,
+            next: Some(
+                self.next
+                    .map(|next| next.add(val))
+                    .unwrap_or(Box::new(Node::new(val))),
+            ),
+        })
     }
 
     pub fn get(&self, depth: usize) -> Option<i64> {
         if depth == 0 {
             Some(self.val)
-        } else if let Some(v) = &self.next {
-            v.get(depth - 1)
         } else {
-            None
+            self.next.as_ref().and_then(|next| next.get(depth - 1))
         }
     }
 
     pub fn depth(&self) -> usize {
-        if let Some(v) = &self.next {
-            v.depth() + 1
-        } else {
-            1
-        }
-    }
-}
-
-impl Clone for WindowStack {
-    fn clone(&self) -> Self {
-        Self {
-            head: self.head.clone(),
-        }
+        self.next.as_ref().map(|next| next.depth()).unwrap_or(0) + 1
     }
 }
 
@@ -103,45 +67,33 @@ impl WindowStack {
     }
 
     pub fn move_up(&mut self, id: i64) -> i64 {
-        if let Some(v) = &self.head {
-            self.head = Some(v.as_ref().clone().move_up(id));
-        } else {
-            let node = Node::new(id);
-            let rc = Rc::from(node);
-            self.head = Some(rc);
-        }
+        self.head = self
+            .head
+            .take()
+            .map(|head| head.move_up(id))
+            .or(Some(Box::new(Node::new(id))));
         id
     }
 
     pub fn add(&mut self, id: i64) -> i64 {
-        if let Some(v) = &self.head {
-            self.head = Some(v.as_ref().clone().add(id));
-        } else {
-            self.head = Some(Rc::from(Node::new(id)));
-        }
+        self.head = self
+            .head
+            .take()
+            .map(|head| head.add(id))
+            .or(Some(Box::new(Node::new(id))));
         id
     }
 
     pub fn remove(&mut self, id: i64) -> i64 {
-        if let Some(v) = &self.head {
-            self.head = v.as_ref().clone().remove(id);
-        }
+        self.head = self.head.take().and_then(|head| head.remove(id));
         id
     }
 
     pub fn get(&self, depth: usize) -> Option<i64> {
-        if let Some(v) = &self.head {
-            v.get(depth)
-        } else {
-            None
-        }
+        self.head.as_ref().and_then(|head| head.get(depth))
     }
 
     pub fn depth(&self) -> usize {
-        if let Some(v) = &self.head {
-            v.depth()
-        } else {
-            0
-        }
+        self.head.as_ref().map(|head| head.depth()).unwrap_or(0)
     }
 }
