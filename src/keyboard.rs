@@ -21,7 +21,7 @@ pub async fn new_stream(
             let mut buf = [0u8; INPUT_EVENT_SIZE];
             let n = file.read(&mut buf).await?;
             if n != INPUT_EVENT_SIZE{
-                Err(io::ErrorKind::UnexpectedEof)?;
+                return Err(io::ErrorKind::UnexpectedEof)?;
             }
             if let Some(ev) = input_event_from_buf(&buf) {
                 yield ev;

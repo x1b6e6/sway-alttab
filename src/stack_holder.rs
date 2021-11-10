@@ -1,6 +1,11 @@
-use {super::window_stack, sway::Connection, swayipc_async as sway};
+use {
+    crate::window_stack::WindowStack,
+    swayipc_async::{Connection, Error},
+};
+
+#[derive(Debug)]
 pub struct StackHolder {
-    window_stack: window_stack::WindowStack,
+    window_stack: WindowStack,
     preview_depth: usize,
     in_preview: bool,
 }
@@ -8,7 +13,7 @@ pub struct StackHolder {
 impl StackHolder {
     pub fn new() -> Self {
         Self {
-            window_stack: window_stack::WindowStack::new(),
+            window_stack: WindowStack::new(),
             preview_depth: 0,
             in_preview: false,
         }
@@ -36,7 +41,7 @@ impl StackHolder {
         self.in_preview = false;
     }
 
-    pub async fn preview_next(&mut self) -> Result<(), sway::Error> {
+    pub async fn preview_next(&mut self) -> Result<(), Error> {
         self.in_preview = true;
         let mut depth = self.preview_depth;
         let mut sway = Connection::new().await?;
@@ -63,7 +68,7 @@ impl StackHolder {
         Ok(())
     }
 
-    pub async fn preview_prev(&mut self) -> Result<(), sway::Error> {
+    pub async fn preview_prev(&mut self) -> Result<(), Error> {
         self.in_preview = true;
         let mut depth = self.preview_depth as isize;
         let mut sway = Connection::new().await?;
@@ -72,7 +77,7 @@ impl StackHolder {
 
         let id = if let Some(id) = self.window_stack.get(depth as usize) {
             id
-        } else if depth <= -1 {
+        } else if depth == -1 {
             depth = self.window_stack.depth() as isize - 1;
 
             if let Some(id) = self.window_stack.get(depth as usize) {

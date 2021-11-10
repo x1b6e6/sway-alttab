@@ -48,13 +48,17 @@ async fn main() {
             ev = kb.next() => {
                 if let Some(ev) = ev {
                     let ev = ev.expect("keyboard stream error");
-                    swayalttab.kb_ev(ev).await.expect("error while procces keyboard event");
+                    swayalttab.kb_ev(ev).await.expect("error while process keyboard event");
+                } else {
+                    break;
                 }
             }
             ev = sway.next() => {
                 if let Some(ev) = ev {
                     let ev = ev.expect("sway events stream error");
                     swayalttab.sway_ev(ev);
+                } else {
+                    break;
                 }
             }
         };
