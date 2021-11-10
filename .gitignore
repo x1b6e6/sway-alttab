@@ -1,6 +1,2 @@
 /target
-/src
-/pkg
-/*.tar.gz
-/*.pkg.tar.zst
 /Cargo.lock
