@@ -1,7 +1,12 @@
 use {
-    evdev_rs_tokio::{enums::EV_KEY, InputEvent},
+    evdev_rs_tokio::{
+        enums::{EventCode, EV_KEY},
+        InputEvent,
+    },
     stack_holder::StackHolder,
-    swayipc_async as sway,
+    swayipc_async::{
+        Connection, Error, Event, EventStream, EventType, Node, NodeType, WindowChange,
+    },
 };
 
 pub mod keyboard;
@@ -21,12 +26,8 @@ pub struct SwayAlttab {
 }
 
 impl SwayAlttab {
-    pub async fn new(
-        key_tab: EV_KEY,
-        key_alt: EV_KEY,
-        key_sft: EV_KEY,
-    ) -> Result<Self, sway::Error> {
-        let mut conn = sway::Connection::new().await?;
+    pub async fn new(key_tab: EV_KEY, key_alt: EV_KEY, key_sft: EV_KEY) -> Result<Self, Error> {
+        let mut conn = Connection::new().await?;
         let mut stack_holder = StackHolder::new();
 
         let tree = conn.get_tree().await?;
@@ -49,16 +50,21 @@ impl SwayAlttab {
         })
     }
 
-    fn nodes(tree: &sway::Node) -> Vec<&sway::Node> {
+    pub async fn sway_events() -> Result<EventStream, Error> {
+        Connection::new()
+            .await?
+            .subscribe(&[EventType::Window])
+            .await
+    }
+
+    fn nodes(tree: &Node) -> Vec<&Node> {
         match tree.node_type {
-            sway::NodeType::Con => vec![tree],
+            NodeType::Con => vec![tree],
             _ => tree.nodes.iter().flat_map(SwayAlttab::nodes).collect(),
         }
     }
 
-    pub async fn kb_ev(&mut self, ev: InputEvent) -> Result<(), sway::Error> {
-        use evdev_rs_tokio::enums::EventCode;
-
+    pub async fn kb_ev(&mut self, ev: InputEvent) -> Result<(), Error> {
         if let EventCode::EV_KEY(key) = ev.event_code {
             if key == self.key_alt {
                 self.psd_alt = ev.value > 0;
@@ -79,9 +85,7 @@ impl SwayAlttab {
         Ok(())
     }
 
-    pub fn sway_ev(&mut self, ev: sway::Event) {
-        use swayipc_async::{Event, WindowChange};
-
+    pub fn sway_ev(&mut self, ev: Event) {
         match ev {
             Event::Window(w) => {
                 let id = w.container.id;

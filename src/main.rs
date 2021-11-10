@@ -4,7 +4,6 @@ use {
     nix::unistd::{setuid, Uid},
     std::str::FromStr,
     sway_alttab::{keyboard, SwayAlttab},
-    swayipc_async as sway,
     tokio::select,
 };
 
@@ -28,17 +27,11 @@ async fn main() {
     setuid(Uid::from_raw(0)).unwrap();
 
     let kb = keyboard::new_stream(String::from(device)).await.unwrap();
-    let sway = swayipc_async::Connection::new()
-        .await
-        .unwrap()
-        .subscribe(&[sway::EventType::Window])
-        .await
-        .unwrap();
+    let swayalttab = SwayAlttab::new(key_tab, key_alt, key_sft).await.unwrap();
+    let sway = SwayAlttab::sway_events().await.unwrap();
 
     pin_mut!(kb);
     pin_mut!(sway);
-
-    let swayalttab = SwayAlttab::new(key_tab, key_alt, key_sft).await.unwrap();
     pin_mut!(swayalttab);
 
     loop {
