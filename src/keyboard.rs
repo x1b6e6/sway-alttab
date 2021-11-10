@@ -1,89 +1,49 @@
 use {
-    super::stack_holder::{Action, Direction},
-    evdev_rs_tokio::{
-        enums::{EventCode, EV_KEY},
-        InputEvent, ReadFlag, ReadStatus, UninitDevice,
+    async_stream::try_stream,
+    evdev_rs_tokio::{util::int_to_event_code, InputEvent, TimeVal},
+    futures_core::Stream,
+    nix::libc::input_event,
+    std::path::Path,
+    tokio::{
+        fs::File,
+        io::{self, AsyncReadExt},
     },
-    std::sync::{mpsc::Sender, Arc, Mutex},
-    tokio::fs::File,
 };
 
-pub struct Keyboard {
-    meta_pressed: bool,
-    reverse_pressed: bool,
-    key_alt: EV_KEY,
-    key_tab: EV_KEY,
-    key_shift: EV_KEY,
-    sender: Arc<Mutex<Sender<Action>>>,
+const INPUT_EVENT_SIZE: usize = core::mem::size_of::<input_event>();
+
+pub async fn new_stream(
+    dev: impl AsRef<Path>,
+) -> io::Result<impl Stream<Item = io::Result<InputEvent>>> {
+    let mut file = Box::pin(File::open(dev).await?);
+    Ok(try_stream! {
+        loop {
+            let mut buf = [0u8; INPUT_EVENT_SIZE];
+            let n = file.read(&mut buf).await?;
+            if n != INPUT_EVENT_SIZE{
+                Err(io::ErrorKind::UnexpectedEof)?;
+            }
+            if let Some(ev) = input_event_from_buf(&buf) {
+                yield ev;
+            }
+        }
+    })
 }
 
-impl Keyboard {
-    pub fn new(
-        key_alt: EV_KEY,
-        key_tab: EV_KEY,
-        key_shift: EV_KEY,
-        sender: &Arc<Mutex<Sender<Action>>>,
-    ) -> Self {
-        Self {
-            meta_pressed: false,
-            reverse_pressed: false,
-            key_alt,
-            key_tab,
-            key_shift,
-            sender: sender.clone(),
-        }
+fn input_event_from_buf(buf: &[u8; INPUT_EVENT_SIZE]) -> Option<InputEvent> {
+    let ev: input_event = unsafe { core::mem::transmute_copy(buf) };
+    if ev.type_ != 1 {
+        return None;
     }
 
-    pub async fn wait(&mut self, filename: String) {
-        let f = File::open(filename);
-        let u_d = UninitDevice::new().unwrap();
-        let d = u_d.set_file(f.await.unwrap()).unwrap();
+    let event_code = int_to_event_code(ev.type_ as u32, ev.code as u32);
 
-        loop {
-            let ev = d.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING);
-            if let Ok(ev) = ev {
-                if let ReadStatus::Success = ev.0 {
-                    self.process_event(ev.1).await;
-                } else {
-                    dbg!("ignore sync event");
-                }
-            }
-        }
-    }
-
-    async fn process_event(&mut self, event: InputEvent) {
-        if let EventCode::EV_KEY(key) = event.event_code {
-            if self.key_alt == key {
-                self.meta_pressed = event.value != 0;
-                if event.value == 0 {
-                    // end
-                    self.sender
-                        .lock()
-                        .unwrap()
-                        .send(Action::PreviewEnd)
-                        .unwrap();
-                }
-            } else if self.key_shift == key {
-                self.reverse_pressed = event.value != 0;
-            } else if self.key_tab == key {
-                if event.value == 1 && self.meta_pressed {
-                    if !self.reverse_pressed {
-                        // normal
-                        self.sender
-                            .lock()
-                            .unwrap()
-                            .send(Action::Preview(Direction::Next))
-                            .unwrap();
-                    } else {
-                        // reverse
-                        self.sender
-                            .lock()
-                            .unwrap()
-                            .send(Action::Preview(Direction::Prev))
-                            .unwrap();
-                    }
-                }
-            }
-        }
-    }
+    Some(InputEvent {
+        time: TimeVal {
+            tv_sec: ev.time.tv_sec,
+            tv_usec: ev.time.tv_usec,
+        },
+        event_code,
+        value: ev.value,
+    })
 }
