@@ -1,6 +1,6 @@
 [package]
 name = "sway-alttab"
-description = "alt-tab window switch implementaion for sway"
+description = "Program for switching between windows on swaywm"
 version = "0.2.0"
 authors = [
     "x1b6e6 <ftdabcde@gmail.com>"

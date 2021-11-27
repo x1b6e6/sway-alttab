@@ -1,8 +1,9 @@
+///! Program for switching between windows on swaywm
 use {
     evdev_rs_tokio::enums::EV_KEY,
-    futures_util::{pin_mut, StreamExt},
+    futures_util::{pin_mut, StreamExt as _},
     nix::unistd::{setuid, Uid},
-    std::str::FromStr,
+    std::str::FromStr as _,
     sway_alttab::{keyboard, SwayAlttab},
     tokio::select,
 };
