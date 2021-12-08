@@ -23,8 +23,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .long("device")
                 .value_name("DEVICE")
                 .help("keyboard device")
-                .takes_value(true)
-                .required(true),
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("alt")
