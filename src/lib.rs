@@ -59,7 +59,7 @@ impl SwayAlttab {
 
     fn nodes(tree: &Node) -> Vec<&Node> {
         match tree.node_type {
-            NodeType::Con => vec![tree],
+            NodeType::Con if tree.nodes.len() == 0 => vec![tree],
             _ => tree.nodes.iter().flat_map(SwayAlttab::nodes).collect(),
         }
     }
