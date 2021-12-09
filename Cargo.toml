@@ -1,10 +1,12 @@
 [package]
 name = "sway-alttab"
-description = "Program for switching between windows on swaywm"
 version = "0.3.0"
+repository = "https://github.com/x1b6e6/sway-alttab.git"
+description = "Program for switching between windows on swaywm"
 authors = [
-    "x1b6e6 <ftdabcde@gmail.com>"
+    "x1b6e6 <ftdabcde@gmail.com>",
 ]
+license = "MIT"
 edition = "2018"
 
 [dependencies]
