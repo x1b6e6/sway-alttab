@@ -1,71 +1,81 @@
+/// `Node` is internal type for storing data (of [`i64`]) in [`WindowStack`]
 #[derive(Debug, Clone)]
 struct Node {
-    val: i64,
+    value: i64,
     next: Option<Box<Node>>,
 }
 
+/// `WindowStack` is type for storing data (of [`i64`]) in stack
 #[derive(Debug, Clone)]
 pub struct WindowStack {
     head: Option<Box<Node>>,
 }
 
 impl Node {
-    pub fn new(val: i64) -> Self {
-        Self { val, next: None }
+    /// Create new [`Node`] with `value`
+    pub fn new(value: i64) -> Self {
+        Self { value, next: None }
     }
 
-    pub fn remove(mut self, val: i64) -> Option<Box<Self>> {
-        if self.val == val {
+    /// Remove `value` from tree
+    pub fn remove(mut self, value: i64) -> Option<Box<Self>> {
+        if self.value == value {
             self.next
         } else {
             Some(Box::new(
                 self.next
                     .take()
                     .map(|next| Self {
-                        val: self.val,
-                        next: next.remove(val),
+                        next: next.remove(value),
+                        ..self
                     })
                     .unwrap_or(self),
             ))
         }
     }
 
-    pub fn move_up(self, val: i64) -> Box<Self> {
+    /// Move `value` to the head
+    pub fn move_up(self, value: i64) -> Box<Self> {
         Box::new(Self {
-            val,
-            next: self.remove(val),
+            value: self.value,
+            next: self.remove(value),
         })
     }
 
-    pub fn add(self, val: i64) -> Box<Self> {
+    /// Add `value` to the tail
+    pub fn add(self, value: i64) -> Box<Self> {
         Box::new(Self {
-            val: self.val,
             next: Some(
                 self.next
-                    .map(|next| next.add(val))
-                    .unwrap_or(Box::new(Node::new(val))),
+                    .map(|next| next.add(value))
+                    .unwrap_or(Box::new(Node::new(value))),
             ),
+            ..self
         })
     }
 
+    /// Try get value in `depth` of three
     pub fn get(&self, depth: usize) -> Option<i64> {
         if depth == 0 {
-            Some(self.val)
+            Some(self.value)
         } else {
             self.next.as_ref().and_then(|next| next.get(depth - 1))
         }
     }
 
+    /// Depth of three
     pub fn depth(&self) -> usize {
         self.next.as_ref().map(|next| next.depth()).unwrap_or(0) + 1
     }
 }
 
 impl WindowStack {
+    /// Create new empty [`WindowStack`]
     pub fn new() -> Self {
         Self { head: None }
     }
 
+    /// Move window with `id` to the up of stack
     pub fn move_up(&mut self, id: i64) -> i64 {
         self.head = self
             .head
@@ -75,6 +85,7 @@ impl WindowStack {
         id
     }
 
+    /// Add window with `id` to the down of stack
     pub fn add(&mut self, id: i64) -> i64 {
         self.head = self
             .head
@@ -84,15 +95,18 @@ impl WindowStack {
         id
     }
 
+    /// Remove window with `id` from the stack
     pub fn remove(&mut self, id: i64) -> i64 {
         self.head = self.head.take().and_then(|head| head.remove(id));
         id
     }
 
+    /// Get window `id` in `depth` of stack
     pub fn get(&self, depth: usize) -> Option<i64> {
         self.head.as_ref().and_then(|head| head.get(depth))
     }
 
+    /// Get depth of stack
     pub fn depth(&self) -> usize {
         self.head.as_ref().map(|head| head.depth()).unwrap_or(0)
     }

@@ -10,22 +10,33 @@ use {
 };
 
 pub mod keyboard;
-mod stack_holder;
-mod window_stack;
+pub mod stack_holder;
+pub mod window_stack;
 
+/// `SwayAlttab` is type with main logic of application
 #[derive(Debug)]
 pub struct SwayAlttab {
+    /// key with Tab behavior
     key_tab: EV_KEY,
+    /// key with Alt behavior
     key_alt: EV_KEY,
+    /// key with Shift behavior
     key_sft: EV_KEY,
 
+    /// key with Alt behavior is pressed
     psd_alt: bool,
+    /// key with Shift behavior is pressed
     psd_sft: bool,
 
+    /// windows stack in [`StackHolder`]
     stack_holder: StackHolder,
 }
 
 impl SwayAlttab {
+    /// Create [`SwayAlttab`] object with params
+    /// `key_tab` is key with Tab behavior
+    /// `key_alt` is key with Alt behavior
+    /// `key_sft` is key with Shift behavior
     pub async fn new(key_tab: EV_KEY, key_alt: EV_KEY, key_sft: EV_KEY) -> Result<Self, Error> {
         let mut conn = Connection::new().await?;
         let mut stack_holder = StackHolder::new();
@@ -50,6 +61,7 @@ impl SwayAlttab {
         })
     }
 
+    /// Try create stream of [`EventStream`]
     pub async fn sway_events() -> Result<EventStream, Error> {
         Connection::new()
             .await?
@@ -57,6 +69,7 @@ impl SwayAlttab {
             .await
     }
 
+    /// Get vector of windows as [`Node`]
     fn nodes(tree: &Node) -> Vec<&Node> {
         match tree.node_type {
             NodeType::Con if tree.nodes.len() == 0 => vec![tree],
@@ -64,16 +77,17 @@ impl SwayAlttab {
         }
     }
 
-    pub async fn kb_ev(&mut self, ev: InputEvent) -> Result<(), Error> {
-        if let EventCode::EV_KEY(key) = ev.event_code {
+    /// Process keyboard event [`InputEvent`]
+    pub async fn process_keyboard_event(&mut self, event: InputEvent) -> Result<(), Error> {
+        if let EventCode::EV_KEY(key) = event.event_code {
             if key == self.key_alt {
-                self.psd_alt = ev.value > 0;
+                self.psd_alt = event.value > 0;
                 if !self.psd_alt {
-                    self.stack_holder.preview_end();
+                    self.stack_holder.preview_finish();
                 }
             } else if key == self.key_sft {
-                self.psd_sft = ev.value > 0;
-            } else if key == self.key_tab && self.psd_alt && ev.value == 1 {
+                self.psd_sft = event.value > 0;
+            } else if key == self.key_tab && self.psd_alt && event.value == 1 {
                 if !self.psd_sft {
                     self.stack_holder.preview_next().await?;
                 } else {
@@ -85,11 +99,12 @@ impl SwayAlttab {
         Ok(())
     }
 
-    pub fn sway_ev(&mut self, ev: Event) {
-        match ev {
-            Event::Window(w) => {
-                let id = w.container.id;
-                match w.change {
+    /// Process sway event [`Event`]
+    pub fn process_sway_event(&mut self, event: Event) {
+        match event {
+            Event::Window(window) => {
+                let id = window.container.id;
+                match window.change {
                     WindowChange::Focus => self.stack_holder.move_up(id),
                     WindowChange::New => self.stack_holder.add(id),
                     WindowChange::Close => self.stack_holder.remove(id),

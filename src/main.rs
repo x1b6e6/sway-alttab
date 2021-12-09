@@ -51,11 +51,11 @@ async fn main() -> Fallible<()> {
         select! {
             ev = kb.next() => {
                 let ev = ev.expect("keyboard stream error").unwrap();
-                swayalttab.kb_ev(ev).await.unwrap();
+                swayalttab.process_keyboard_event(ev).await.unwrap();
             }
             ev = sway.next() => {
                 let ev = ev.expect("sway events stream error").unwrap();
-                swayalttab.sway_ev(ev);
+                swayalttab.process_sway_event(ev);
             }
         };
     }

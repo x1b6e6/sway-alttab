@@ -5,6 +5,13 @@ const PKG_NAME: &str = env!("CARGO_PKG_NAME");
 const PKG_AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const PKG_DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
 
+/// Create [`App`] instance for argument parsing
+///
+/// Arguments:
+///  * `device` - device for input events
+///  * `key-alt` - key with Alt behavior
+///  * `key-tab` - key with Tab behavior
+///  * `key-shift` - key with Shift behavior
 pub fn build_app() -> App<'static, 'static> {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
         AppSettings::ColoredHelp

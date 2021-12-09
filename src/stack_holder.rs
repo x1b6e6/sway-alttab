@@ -3,6 +3,12 @@ use {
     swayipc_async::{Connection, Error},
 };
 
+/// Hold stack of windows
+///
+/// The main function is preview of window
+///
+/// it's will show you window before
+/// moving it to the top of stack
 #[derive(Debug)]
 pub struct StackHolder {
     window_stack: WindowStack,
@@ -11,6 +17,7 @@ pub struct StackHolder {
 }
 
 impl StackHolder {
+    /// Create new [`StackHolder`]
     pub fn new() -> Self {
         Self {
             window_stack: WindowStack::new(),
@@ -19,21 +26,25 @@ impl StackHolder {
         }
     }
 
+    /// Move window with `id` to up of stack
     pub fn move_up(&mut self, id: i64) {
         if !self.in_preview {
             self.window_stack.move_up(id);
         }
     }
 
+    /// Add new window with `id`
     pub fn add(&mut self, id: i64) {
         self.window_stack.add(id);
     }
 
+    /// Remove window with `id`
     pub fn remove(&mut self, id: i64) {
         self.window_stack.remove(id);
     }
 
-    pub fn preview_end(&mut self) {
+    /// Finish preview and move currently focused window to the up
+    pub fn preview_finish(&mut self) {
         if let Some(id) = self.window_stack.get(self.preview_depth) {
             self.window_stack.move_up(id);
         }
@@ -41,6 +52,7 @@ impl StackHolder {
         self.in_preview = false;
     }
 
+    /// Select and focus next window (w/o moving windows in stack)
     pub async fn preview_next(&mut self) -> Result<(), Error> {
         self.in_preview = true;
         let mut depth = self.preview_depth;
@@ -54,8 +66,10 @@ impl StackHolder {
             depth = 0;
             if let Some(id) = self.window_stack.get(depth) {
                 id
-            } else {
+            } else if self.window_stack.depth() == 0 {
                 return Ok(());
+            } else {
+                unreachable!()
             }
         } else {
             unreachable!();
@@ -68,6 +82,7 @@ impl StackHolder {
         Ok(())
     }
 
+    /// Select and focus to previously window (w/o moving windows in stack)
     pub async fn preview_prev(&mut self) -> Result<(), Error> {
         self.in_preview = true;
         let mut depth = self.preview_depth as isize;
@@ -82,8 +97,10 @@ impl StackHolder {
 
             if let Some(id) = self.window_stack.get(depth as usize) {
                 id
-            } else {
+            } else if depth == 0 {
                 return Ok(());
+            } else {
+                unreachable!();
             }
         } else {
             unreachable!();
