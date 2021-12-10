@@ -13,7 +13,7 @@ use {
 pub struct StackHolder {
     window_stack: WindowStack,
     preview_depth: usize,
-    in_preview: bool,
+    ignore_move_up: Option<i64>,
 }
 
 impl StackHolder {
@@ -22,14 +22,16 @@ impl StackHolder {
         Self {
             window_stack: WindowStack::new(),
             preview_depth: 0,
-            in_preview: false,
+            ignore_move_up: None,
         }
     }
 
     /// Move window with `id` to up of stack
     pub fn move_up(&mut self, id: i64) {
-        if !self.in_preview {
+        if self.ignore_move_up != Some(id) {
             self.window_stack.move_up(id);
+        } else {
+            self.ignore_move_up.take();
         }
     }
 
@@ -49,12 +51,11 @@ impl StackHolder {
             self.window_stack.move_up(id);
         }
         self.preview_depth = 0;
-        self.in_preview = false;
+        self.ignore_move_up.take();
     }
 
     /// Select and focus next window (w/o moving windows in stack)
     pub async fn preview_next(&mut self) -> Result<(), Error> {
-        self.in_preview = true;
         let mut depth = self.preview_depth;
         let mut sway = Connection::new().await?;
 
@@ -75,16 +76,17 @@ impl StackHolder {
             unreachable!();
         };
 
+        self.ignore_move_up = Some(id);
+        self.preview_depth = depth;
+
         let command = format!("[con_id={}] focus", id);
         sway.run_command(command).await?;
-        self.preview_depth = depth;
 
         Ok(())
     }
 
     /// Select and focus to previously window (w/o moving windows in stack)
     pub async fn preview_prev(&mut self) -> Result<(), Error> {
-        self.in_preview = true;
         let mut depth = self.preview_depth as isize;
         let mut sway = Connection::new().await?;
 
@@ -97,7 +99,7 @@ impl StackHolder {
 
             if let Some(id) = self.window_stack.get(depth as usize) {
                 id
-            } else if depth == 0 {
+            } else if self.window_stack.depth() == 0 {
                 return Ok(());
             } else {
                 unreachable!();
@@ -106,9 +108,11 @@ impl StackHolder {
             unreachable!();
         };
 
+        self.ignore_move_up = Some(id);
+        self.preview_depth = depth as usize;
+
         let command = format!("[con_id={}] focus", id);
         sway.run_command(command).await?;
-        self.preview_depth = depth as usize;
 
         Ok(())
     }
