@@ -55,8 +55,8 @@ fn input_event_from_buf(buf: &[u8; INPUT_EVENT_SIZE]) -> Option<InputEvent> {
 /// * look at their key capabilities
 /// * choose with large capabilities
 /// * get path to event device at `/sys/class/input/<eventX>/uevent`
-/// * return opened [`File`] at this event device
-pub async fn try_find_keyboard() -> io::Result<Option<fs::File>> {
+/// * return opened path at this event device
+pub async fn try_find_keyboard() -> io::Result<Option<String>> {
     let mut sys_class = fs::read_dir("/sys/class/input/").await?;
 
     while let Some(dev) = sys_class.next_entry().await? {
@@ -89,8 +89,7 @@ pub async fn try_find_keyboard() -> io::Result<Option<fs::File>> {
             if line[0] == "DEVNAME" {
                 let devname = Path::new("/dev/").join(line[1]);
                 dbg!(&devname);
-                let file = File::open(devname).await?;
-                return Ok(Some(file));
+                return Ok(devname.to_str().map(Into::into));
             }
         }
     }

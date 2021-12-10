@@ -2,11 +2,15 @@
 use {
     evdev_rs_tokio::enums::EV_KEY,
     futures_util::{pin_mut, StreamExt as _},
-    nix::unistd::{setuid, Uid},
-    std::str::FromStr as _,
+    nix::unistd::{getgroups, getuid, setgid, setuid, Gid, Uid},
+    std::{
+        os::unix::fs::{MetadataExt as _, PermissionsExt as _},
+        path::Path,
+        str::FromStr as _,
+    },
     sway_alttab::{keyboard, SwayAlttab},
     swayipc_async::Fallible,
-    tokio::{fs, select},
+    tokio::{fs, io, select},
 };
 
 mod app;
@@ -26,18 +30,18 @@ async fn main() -> Fallible<()> {
     let key_tab = EV_KEY::from_str(key_tab).expect(&key_error(key_tab));
     let key_sft = EV_KEY::from_str(key_sft).expect(&key_error(key_sft));
 
-    setuid(Uid::from_raw(0)).unwrap();
-
-    let file = if let Some(device) = device {
-        fs::File::open(device)
-            .await
-            .ok()
-            .expect("device is not a keyboard")
+    let filename = if let Some(device) = device {
+        device.to_string()
     } else {
         keyboard::try_find_keyboard()
             .await?
             .expect("can't found keyboard")
     };
+    let filename = Path::new(&filename);
+
+    let file = try_open_file(filename)
+        .await
+        .expect("device is not a keyboard or permission denied");
 
     let kb = keyboard::new_stream(file).await.unwrap();
     let swayalttab = SwayAlttab::new(key_tab, key_alt, key_sft).await.unwrap();
@@ -59,4 +63,24 @@ async fn main() -> Fallible<()> {
             }
         };
     }
+}
+
+/// try open the file
+/// if process doesn't have permissions then try get permissions
+async fn try_open_file(filepath: &Path) -> io::Result<fs::File> {
+    let meta = fs::metadata(filepath).await?;
+    let uid = Uid::from_raw(meta.uid());
+    let gid = Gid::from_raw(meta.gid());
+
+    if uid != getuid() && !getgroups().unwrap().contains(&gid) {
+        let meta = fs::metadata("/proc/self/exe").await?;
+        let mode = meta.permissions().mode();
+        if (mode & 02000) == 02000 && gid == Gid::from_raw(meta.gid()) {
+            setgid(gid).ok();
+        } else if (mode & 04000) == 04000 && uid == Uid::from_raw(meta.uid()) {
+            setuid(uid).ok();
+        }
+    }
+
+    fs::File::open(filepath).await
 }
