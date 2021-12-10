@@ -30,6 +30,12 @@ You can choose event device for processing from it
 
 Only one event device at once is supported at now
 
+> **_Note_**: You need read permissions to files in `/dev/input/` directory or
+> you can set sticky bit to `sway-alttab` executable file (it's tries
+> [`setgid`](https://man7.org/linux/man-pages/man2/setgid.2.html) at first and
+> then [`setuid`](https://man7.org/linux/man-pages/man2/setuid.2.html) if it
+> needed)
+
 ## Storing windows in order of last access
 
 `sway-alttab` is remembering in what order you opening windows and switching
