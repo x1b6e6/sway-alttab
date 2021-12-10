@@ -30,6 +30,9 @@ pub struct SwayAlttab {
 
     /// windows stack in [`StackHolder`]
     stack_holder: StackHolder,
+
+    /// ignore `focus` event with this window id (for preview mode)
+    ignore_move_up: Option<i64>,
 }
 
 impl SwayAlttab {
@@ -58,6 +61,7 @@ impl SwayAlttab {
             psd_sft: false,
 
             stack_holder,
+            ignore_move_up: None,
         })
     }
 
@@ -83,6 +87,18 @@ impl SwayAlttab {
         }
     }
 
+    /// Focus window in preview mode
+    async fn preview(&mut self, id: i64) -> Result<(), Error> {
+        let mut sway = Connection::new().await?;
+        let cmd = format!("[con_id={}]", id);
+        self.ignore_move_up = Some(id);
+        let result = sway.run_command(cmd).await;
+        result.map(|_| ()).map_err(|err| {
+            self.ignore_move_up = None;
+            err
+        })
+    }
+
     /// Process keyboard event [`InputEvent`]
     pub async fn process_keyboard_event(&mut self, event: InputEvent) -> Result<(), Error> {
         if let EventCode::EV_KEY(key) = event.event_code {
@@ -90,14 +106,18 @@ impl SwayAlttab {
                 self.psd_alt = event.value > 0;
                 if !self.psd_alt {
                     self.stack_holder.preview_finish();
+                    self.ignore_move_up = None;
                 }
             } else if key == self.key_sft {
                 self.psd_sft = event.value > 0;
             } else if key == self.key_tab && self.psd_alt && event.value == 1 {
-                if !self.psd_sft {
-                    self.stack_holder.preview_next().await?;
+                let id = if !self.psd_sft {
+                    self.stack_holder.preview_next()
                 } else {
-                    self.stack_holder.preview_prev().await?;
+                    self.stack_holder.preview_prev()
+                };
+                if let Some(id) = id {
+                    self.preview(id).await?;
                 }
             }
         }
@@ -107,17 +127,20 @@ impl SwayAlttab {
 
     /// Process sway event [`Event`]
     pub fn process_sway_event(&mut self, event: Event) {
-        match event {
-            Event::Window(window) => {
-                let id = window.container.id;
-                match window.change {
-                    WindowChange::Focus => self.stack_holder.move_up(id),
-                    WindowChange::New => self.stack_holder.add(id),
-                    WindowChange::Close => self.stack_holder.remove(id),
-                    _ => {}
+        if let Event::Window(window) = event {
+            let id = window.container.id;
+            match window.change {
+                WindowChange::New => self.stack_holder.add(id),
+                WindowChange::Close => self.stack_holder.remove(id),
+                WindowChange::Focus => {
+                    if self.ignore_move_up != Some(id) {
+                        self.stack_holder.move_up(id)
+                    } else {
+                        self.ignore_move_up = None;
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
     }
 }
