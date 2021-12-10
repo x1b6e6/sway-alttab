@@ -5,7 +5,7 @@ use {
     },
     stack_holder::StackHolder,
     swayipc_async::{
-        Connection, Error, Event, EventStream, EventType, Node, NodeType, WindowChange,
+        Connection, Error, Event, EventStream, EventType, Node, NodeLayout, NodeType, WindowChange,
     },
 };
 
@@ -72,8 +72,14 @@ impl SwayAlttab {
     /// Get vector of windows as [`Node`]
     fn nodes(tree: &Node) -> Vec<&Node> {
         match tree.node_type {
-            NodeType::Con if tree.nodes.len() == 0 => vec![tree],
-            _ => tree.nodes.iter().flat_map(SwayAlttab::nodes).collect(),
+            NodeType::Con if tree.layout == NodeLayout::None => vec![tree],
+            NodeType::FloatingCon => vec![tree],
+            _ => tree
+                .nodes
+                .iter()
+                .chain(tree.floating_nodes.iter())
+                .flat_map(SwayAlttab::nodes)
+                .collect(),
         }
     }
 
