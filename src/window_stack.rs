@@ -18,40 +18,34 @@ impl Node {
     }
 
     /// Remove `value` from tree
-    pub fn remove(mut self, value: i64) -> Option<Box<Self>> {
+    pub fn remove(self, value: i64) -> Option<Box<Self>> {
         if self.value == value {
             self.next
         } else {
-            Some(Box::new(
-                self.next
-                    .take()
-                    .map(|next| Self {
-                        next: next.remove(value),
-                        ..self
-                    })
-                    .unwrap_or(self),
-            ))
+            Some(Box::new(Self {
+                value: self.value,
+                next: self.next.and_then(|next| next.remove(value)),
+            }))
         }
     }
 
     /// Move `value` to the head
     pub fn move_up(self, value: i64) -> Box<Self> {
         Box::new(Self {
-            value: self.value,
+            value,
             next: self.remove(value),
         })
     }
 
     /// Add `value` to the tail
-    pub fn add(self, value: i64) -> Box<Self> {
-        Box::new(Self {
-            next: Some(
-                self.next
-                    .map(|next| next.add(value))
-                    .unwrap_or(Box::new(Node::new(value))),
-            ),
-            ..self
-        })
+    pub fn add(mut self, value: i64) -> Box<Self> {
+        if self.value != value {
+            self.next = self
+                .next
+                .map(|next| next.add(value))
+                .or_else(|| Some(Box::new(Node::new(value))));
+        }
+        Box::new(self)
     }
 
     /// Try get value in `depth` of three
@@ -81,7 +75,7 @@ impl WindowStack {
             .head
             .take()
             .map(|head| head.move_up(id))
-            .or(Some(Box::new(Node::new(id))));
+            .or_else(|| Some(Box::new(Node::new(id))));
         id
     }
 
@@ -91,7 +85,7 @@ impl WindowStack {
             .head
             .take()
             .map(|head| head.add(id))
-            .or(Some(Box::new(Node::new(id))));
+            .or_else(|| Some(Box::new(Node::new(id))));
         id
     }
 
