@@ -90,7 +90,7 @@ impl SwayAlttab {
     /// Focus window in preview mode
     async fn preview(&mut self, id: i64) -> Result<(), Error> {
         let mut sway = Connection::new().await?;
-        let cmd = format!("[con_id={}]", id);
+        let cmd = format!("[con_id={}] focus", id);
         self.ignore_move_up = Some(id);
         let result = sway.run_command(cmd).await;
         result.map(|_| ()).map_err(|err| {
