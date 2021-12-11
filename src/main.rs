@@ -21,8 +21,8 @@ use {
 
 mod app;
 mod keyboard;
+mod stack;
 mod stack_holder;
-mod window_stack;
 
 /// `SwayAlttab` is type with main logic of application
 #[derive(Debug)]

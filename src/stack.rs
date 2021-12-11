@@ -1,13 +1,13 @@
-/// `Node` is internal type for storing data (of [`i64`]) in [`WindowStack`]
+/// `Node` is internal type for storing data (of [`i64`]) in [`Stack`]
 #[derive(Debug, Clone)]
 struct Node {
     value: i64,
     next: Option<Box<Node>>,
 }
 
-/// `WindowStack` is type for storing data (of [`i64`]) in stack
+/// `Stack` is type for storing data (of [`i64`]) in stack
 #[derive(Debug, Clone)]
-pub struct WindowStack {
+pub struct Stack {
     head: Option<Box<Node>>,
 }
 
@@ -63,8 +63,8 @@ impl Node {
     }
 }
 
-impl WindowStack {
-    /// Create new empty [`WindowStack`]
+impl Stack {
+    /// Create new empty [`Stack`]
     pub fn new() -> Self {
         Self { head: None }
     }

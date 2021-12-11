@@ -1,11 +1,11 @@
-use crate::window_stack::WindowStack;
+use crate::stack::Stack;
 
 /// Hold stack of windows
 ///
 /// The main function is preview of window
 #[derive(Debug, Clone)]
 pub struct StackHolder {
-    window_stack: WindowStack,
+    window_stack: Stack,
     preview_depth: usize,
 }
 
@@ -13,7 +13,7 @@ impl StackHolder {
     /// Create new [`StackHolder`]
     pub fn new() -> Self {
         Self {
-            window_stack: WindowStack::new(),
+            window_stack: Stack::new(),
             preview_depth: 0,
         }
     }
