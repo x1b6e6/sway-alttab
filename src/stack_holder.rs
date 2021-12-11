@@ -3,7 +3,7 @@ use crate::window_stack::WindowStack;
 /// Hold stack of windows
 ///
 /// The main function is preview of window
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StackHolder {
     window_stack: WindowStack,
     preview_depth: usize,
@@ -31,6 +31,14 @@ impl StackHolder {
     /// Remove window with `id`
     pub fn remove(&mut self, id: i64) {
         self.window_stack.remove(id);
+    }
+
+    pub fn get(&self, depth: usize) -> Option<i64> {
+        self.window_stack.get(depth)
+    }
+
+    pub fn depth(&self) -> usize {
+        self.window_stack.depth()
     }
 
     /// Finish preview and move currently focused window to the up

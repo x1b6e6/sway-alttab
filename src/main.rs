@@ -52,18 +52,7 @@ impl SwayAlttab {
     /// `key_alt` is key with Alt behavior
     /// `key_sft` is key with Shift behavior
     pub async fn new(key_tab: EV_KEY, key_alt: EV_KEY, key_sft: EV_KEY) -> Result<Self, Error> {
-        let mut conn = Connection::new().await?;
-        let mut stack_holder = StackHolder::new();
-
-        let tree = conn.get_tree().await?;
-
-        let nodes = SwayAlttab::nodes(&tree);
-        nodes.iter().for_each(|node| stack_holder.add(node.id));
-        if let Some(node) = nodes.iter().find(|node| node.focused) {
-            stack_holder.move_up(node.id);
-        }
-
-        Ok(Self {
+        let mut swayalttab = Self {
             key_tab,
             key_alt,
             key_sft,
@@ -71,9 +60,13 @@ impl SwayAlttab {
             psd_alt: false,
             psd_sft: false,
 
-            stack_holder,
+            stack_holder: StackHolder::new(),
             ignore_move_up: None,
-        })
+        };
+
+        swayalttab.refresh_nodes().await?;
+
+        Ok(swayalttab)
     }
 
     /// Try create stream of [`EventStream`]
@@ -87,6 +80,7 @@ impl SwayAlttab {
     /// Get vector of windows as [`Node`]
     fn nodes(tree: &Node) -> Vec<&Node> {
         match tree.node_type {
+            NodeType::Workspace if tree.name == Some("__i3_scratch".to_string()) => vec![],
             NodeType::Con if tree.layout == NodeLayout::None => vec![tree],
             NodeType::FloatingCon => vec![tree],
             _ => tree
@@ -96,6 +90,24 @@ impl SwayAlttab {
                 .flat_map(SwayAlttab::nodes)
                 .collect(),
         }
+    }
+
+    async fn refresh_nodes(&mut self) -> Result<(), Error> {
+        let mut sway = Connection::new().await?;
+        let root = sway.get_tree().await?;
+        let nodes = Self::nodes(&root);
+        let size = self.stack_holder.depth();
+        nodes.iter().for_each(|node| self.stack_holder.add(node.id));
+        if size != self.stack_holder.depth() {
+            let size = self.stack_holder.depth();
+            if let Some(id) = self.stack_holder.get(size - 1) {
+                self.stack_holder.move_up(id);
+            }
+        }
+        if let Some(node) = nodes.iter().find(|node| node.focused) {
+            self.stack_holder.move_up(node.id);
+        }
+        Ok(())
     }
 
     /// Focus window in preview mode
@@ -137,7 +149,7 @@ impl SwayAlttab {
     }
 
     /// Process sway event [`Event`]
-    pub fn process_sway_event(&mut self, event: Event) {
+    pub async fn process_sway_event(&mut self, event: Event) -> Result<(), Error> {
         if let Event::Window(window) = event {
             let id = window.container.id;
             match window.change {
@@ -150,9 +162,15 @@ impl SwayAlttab {
                         self.ignore_move_up = None;
                     }
                 }
+                WindowChange::Move => {
+                    self.stack_holder.remove(id);
+                    self.refresh_nodes().await?;
+                }
                 _ => {}
             }
         }
+
+        Ok(())
     }
 }
 
@@ -195,12 +213,12 @@ async fn main() -> Fallible<()> {
     loop {
         select! {
             ev = kb.next() => {
-                let ev = ev.expect("keyboard stream error").unwrap();
-                swayalttab.process_keyboard_event(ev).await.unwrap();
+                let ev = ev.expect("keyboard stream error")?;
+                swayalttab.process_keyboard_event(ev).await?;
             }
             ev = sway.next() => {
-                let ev = ev.expect("sway events stream error").unwrap();
-                swayalttab.process_sway_event(ev);
+                let ev = ev.expect("sway events stream error")?;
+                swayalttab.process_sway_event(ev).await?;
             }
         };
     }
