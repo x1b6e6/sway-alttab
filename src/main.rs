@@ -240,9 +240,9 @@ async fn try_open_file(filepath: &Path) -> io::Result<fs::File> {
         let exe_meta = fs::metadata("/proc/self/exe").await?;
         let exe_mode = exe_meta.permissions().mode();
         if (exe_mode & 0o2000) == 0o2000 && gid == Gid::from_raw(exe_meta.gid()) {
-            setgid(gid).ok();
+            setgid(gid).expect("error while setgid");
         } else if (exe_mode & 0o4000) == 0o4000 && uid == Uid::from_raw(exe_meta.uid()) {
-            setuid(uid).ok();
+            setuid(uid).expect("error while setuid");
         }
     }
 
