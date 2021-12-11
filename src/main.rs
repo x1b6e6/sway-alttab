@@ -71,13 +71,18 @@ async fn try_open_file(filepath: &Path) -> io::Result<fs::File> {
     let meta = fs::metadata(filepath).await?;
     let uid = Uid::from_raw(meta.uid());
     let gid = Gid::from_raw(meta.gid());
+    let mode = meta.permissions().mode();
 
-    if uid != getuid() && !getgroups().unwrap().contains(&gid) {
-        let meta = fs::metadata("/proc/self/exe").await?;
-        let mode = meta.permissions().mode();
-        if (mode & 02000) == 02000 && gid == Gid::from_raw(meta.gid()) {
+    let have_read_permissions = ((mode & 0o004) == 0o004)
+        || ((mode & 0o040) == 0o040 && getgroups().unwrap().contains(&gid))
+        || ((mode & 0o400) == 0o400 && uid == getuid());
+
+    if !have_read_permissions {
+        let exe_meta = fs::metadata("/proc/self/exe").await?;
+        let exe_mode = exe_meta.permissions().mode();
+        if (exe_mode & 0o2000) == 0o2000 && gid == Gid::from_raw(exe_meta.gid()) {
             setgid(gid).ok();
-        } else if (mode & 04000) == 04000 && uid == Uid::from_raw(meta.uid()) {
+        } else if (exe_mode & 0o4000) == 0o4000 && uid == Uid::from_raw(exe_meta.uid()) {
             setuid(uid).ok();
         }
     }
