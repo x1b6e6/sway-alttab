@@ -17,7 +17,7 @@ impl Node {
         Self { value, next: None }
     }
 
-    /// Remove `value` from tree
+    /// Remove `value` from stack
     pub fn remove(self, value: i64) -> Option<Box<Self>> {
         if self.value == value {
             self.next
@@ -48,7 +48,7 @@ impl Node {
         Box::new(self)
     }
 
-    /// Try get value in `depth` of three
+    /// Try get value in `depth` of stack
     pub fn get(&self, depth: usize) -> Option<i64> {
         if depth == 0 {
             Some(self.value)
@@ -57,7 +57,7 @@ impl Node {
         }
     }
 
-    /// Depth of three
+    /// Depth of stack
     pub fn depth(&self) -> usize {
         self.next.as_ref().map(|next| next.depth()).unwrap_or(0) + 1
     }
