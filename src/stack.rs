@@ -105,3 +105,157 @@ impl Stack {
         self.head.as_ref().map(|head| head.depth()).unwrap_or(0)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::Stack;
+
+    #[test]
+    fn add() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        assert_eq!(s.depth(), 3);
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn remove_mid() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.remove(2);
+
+        assert_eq!(s.depth(), 2);
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(3));
+        assert_eq!(s.get(2), None);
+    }
+
+    #[test]
+    fn remove_top() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.remove(1);
+
+        assert_eq!(s.depth(), 2);
+        assert_eq!(s.get(0), Some(2));
+        assert_eq!(s.get(1), Some(3));
+        assert_eq!(s.get(2), None);
+    }
+
+    #[test]
+    fn remove_tail() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.remove(3);
+
+        assert_eq!(s.depth(), 2);
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), None);
+    }
+
+    #[test]
+    fn remove_not_found() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.remove(4);
+
+        assert_eq!(s.depth(), 3);
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn move_up_mid() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.move_up(2);
+
+        assert_eq!(s.depth(), 3);
+        assert_eq!(s.get(0), Some(2));
+        assert_eq!(s.get(1), Some(1));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn move_up_tail() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.move_up(3);
+
+        assert_eq!(s.depth(), 3);
+        assert_eq!(s.get(0), Some(3));
+        assert_eq!(s.get(1), Some(1));
+        assert_eq!(s.get(2), Some(2));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn move_up_head() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.move_up(1);
+
+        assert_eq!(s.depth(), 3);
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn move_up_not_found() {
+        let mut s = Stack::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.move_up(4);
+
+        assert_eq!(s.depth(), 4);
+        assert_eq!(s.get(0), Some(4));
+        assert_eq!(s.get(1), Some(1));
+        assert_eq!(s.get(2), Some(2));
+        assert_eq!(s.get(3), Some(3));
+        assert_eq!(s.get(4), None);
+    }
+}

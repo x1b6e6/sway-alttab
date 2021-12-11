@@ -74,3 +74,185 @@ impl StackHolder {
             })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::StackHolder;
+
+    #[test]
+    fn preview_next() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        assert_eq!(s.preview_next(), Some(2));
+        assert_eq!(s.preview_next(), Some(3));
+        assert_eq!(s.preview_next(), Some(1));
+        assert_eq!(s.preview_next(), Some(2));
+        assert_eq!(s.preview_next(), Some(3));
+        assert_eq!(s.preview_next(), Some(1));
+    }
+
+    #[test]
+    fn preview_next_0() {
+        let mut s = StackHolder::new();
+
+        assert_eq!(s.preview_next(), None);
+        assert_eq!(s.preview_next(), None);
+        assert_eq!(s.preview_next(), None);
+    }
+    
+    #[test]
+    fn preview_next_1() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+
+        assert_eq!(s.preview_next(), Some(1));
+        assert_eq!(s.preview_next(), Some(1));
+        assert_eq!(s.preview_next(), Some(1));
+    }
+
+    #[test]
+    fn preview_prev() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        assert_eq!(s.preview_prev(), Some(3));
+        assert_eq!(s.preview_prev(), Some(2));
+        assert_eq!(s.preview_prev(), Some(1));
+        assert_eq!(s.preview_prev(), Some(3));
+        assert_eq!(s.preview_prev(), Some(2));
+        assert_eq!(s.preview_prev(), Some(1));
+        assert_eq!(s.preview_prev(), Some(3));
+    }
+
+    #[test]
+    fn preview_prev_0() {
+        let mut s = StackHolder::new();
+
+        assert_eq!(s.preview_prev(), None);
+        assert_eq!(s.preview_prev(), None);
+        assert_eq!(s.preview_prev(), None);
+    }
+    
+    #[test]
+    fn preview_prev_1() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+
+        assert_eq!(s.preview_prev(), Some(1));
+        assert_eq!(s.preview_prev(), Some(1));
+        assert_eq!(s.preview_prev(), Some(1));
+    }
+
+    #[test]
+    fn preview_finish_0() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn preview_finish_1() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.preview_next();
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(2));
+        assert_eq!(s.get(1), Some(1));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+
+        s.preview_next();
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn preview_finish_2() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.preview_next();
+        s.preview_next();
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(3));
+        assert_eq!(s.get(1), Some(1));
+        assert_eq!(s.get(2), Some(2));
+        assert_eq!(s.get(3), None);
+
+        s.preview_next();
+        s.preview_next();
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(2));
+        assert_eq!(s.get(1), Some(3));
+        assert_eq!(s.get(2), Some(1));
+        assert_eq!(s.get(3), None);
+    }
+
+    #[test]
+    fn preview_finish_3() {
+        let mut s = StackHolder::new();
+
+        s.add(1);
+        s.add(2);
+        s.add(3);
+
+        s.preview_next();
+        s.preview_next();
+        s.preview_next();
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+
+        s.preview_next();
+        s.preview_next();
+        s.preview_next();
+        s.preview_finish();
+
+        assert_eq!(s.get(0), Some(1));
+        assert_eq!(s.get(1), Some(2));
+        assert_eq!(s.get(2), Some(3));
+        assert_eq!(s.get(3), None);
+    }
+}
