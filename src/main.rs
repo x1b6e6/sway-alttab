@@ -16,7 +16,7 @@ use {
         Connection, Error, Event, EventStream, EventType, Fallible, Node, NodeLayout, NodeType,
         WindowChange,
     },
-    tokio::{fs, io, select},
+    tokio::{fs, io, select, sync::mpsc},
 };
 
 mod app;
@@ -178,7 +178,7 @@ impl SwayAlttab {
 async fn main() -> Fallible<()> {
     let args = app::build_app().get_matches_from(std::env::args_os());
 
-    let device = args.value_of("device");
+    let device = args.values_of("device");
     let key_alt = args.value_of("alt").unwrap();
     let key_sft = args.value_of("shift").unwrap();
     let key_tab = args.value_of("tab").unwrap();
@@ -189,30 +189,39 @@ async fn main() -> Fallible<()> {
     let key_tab = EV_KEY::from_str(key_tab).expect(&key_error(key_tab));
     let key_sft = EV_KEY::from_str(key_sft).expect(&key_error(key_sft));
 
-    let filename = if let Some(device) = device {
-        device.to_string()
+    let filenames: Vec<String> = if let Some(device) = device {
+        device.into_iter().map(Into::into).collect()
     } else {
-        keyboard::try_find_keyboard()
-            .await?
-            .expect("can't found keyboard")
+        keyboard::try_find_keyboard().await?
     };
-    let filename = Path::new(&filename);
+    filenames.first().expect("keyboard not found");
 
-    let file = try_open_file(filename)
-        .await
-        .expect("device is not a keyboard or permission denied");
+    let (tx, mut kb) = mpsc::channel(10);
+    for filename in filenames.iter().map(Path::new) {
+        let file = try_open_file(filename)
+            .await
+            .expect("device is not a keyboard or permission denied");
 
-    let kb = keyboard::new_stream(file).await.unwrap();
+        let stream = keyboard::new_stream(file).await.unwrap();
+        let tx = tx.clone();
+
+        tokio::spawn(async move {
+            pin_mut!(stream);
+            while let Some(ev) = stream.next().await {
+                tx.send(ev).await.unwrap();
+            }
+        });
+    }
+
     let swayalttab = SwayAlttab::new(key_tab, key_alt, key_sft).await.unwrap();
     let sway = SwayAlttab::sway_events().await.unwrap();
 
-    pin_mut!(kb);
     pin_mut!(sway);
     pin_mut!(swayalttab);
 
     loop {
         select! {
-            ev = kb.next() => {
+            ev = kb.recv() => {
                 let ev = ev.expect("keyboard stream error")?;
                 swayalttab.process_keyboard_event(ev).await?;
             }
